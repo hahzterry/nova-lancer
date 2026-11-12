@@ -4,8 +4,10 @@
 //   node tools/build.mjs --watch  → dev build, rebuilds on change
 //
 // Outputs
-//   index.html               full HTML document (open directly in a browser, works offline)
-//   dist/nova-lancer.html    same page without the <html>/<head>/<body> wrapper (for hosting as an Artifact)
+//   public/index.html              full HTML document (served by Vercel, works offline)
+//   public/nova-lancer.html        same page without the <html>/<head>/<body> wrapper
+//                                  (for hosting as an Artifact)
+//   dist/nova-lancer.html          same as above, kept for local convenience
 import * as esbuild from 'esbuild';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -16,8 +18,10 @@ const watch = process.argv.includes('--watch');
 const dev = watch || process.argv.includes('--dev');
 
 const TEMPLATE = path.join(root, 'src', 'template.html');
-const OUT_FULL = path.join(root, 'index.html');
-const OUT_FRAGMENT = path.join(root, 'dist', 'nova-lancer.html');
+const OUT_DIR = path.join(root, 'public');
+const OUT_FULL = path.join(OUT_DIR, 'index.html');
+const OUT_FRAGMENT = path.join(OUT_DIR, 'nova-lancer.html');
+const OUT_FRAGMENT_DIST = path.join(root, 'dist', 'nova-lancer.html');
 
 function writeHtml(js) {
   const tpl = fs.readFileSync(TEMPLATE, 'utf8');
@@ -30,11 +34,18 @@ function writeHtml(js) {
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' +
     head.trim() + '\n</head>\n<body>\n' + bodyWithScript.trim() + '\n</body>\n</html>\n';
   const fragment = head.trim() + '\n' + bodyWithScript.trim() + '\n';
-  fs.mkdirSync(path.dirname(OUT_FRAGMENT), { recursive: true });
+
+  // Vercel expects a `public` directory by default.
+  fs.mkdirSync(OUT_DIR, { recursive: true });
   fs.writeFileSync(OUT_FULL, full);
   fs.writeFileSync(OUT_FRAGMENT, fragment);
+
+  // Keep dist/ copy as well (harmless for hosting, convenient locally).
+  fs.mkdirSync(path.dirname(OUT_FRAGMENT_DIST), { recursive: true });
+  fs.writeFileSync(OUT_FRAGMENT_DIST, fragment);
+
   const kb = (Buffer.byteLength(full) / 1024).toFixed(0);
-  console.log(`[build] ${new Date().toLocaleTimeString()}  index.html ${kb} KB${dev ? ' (dev)' : ''}`);
+  console.log(`[build] ${new Date().toLocaleTimeString()}  public/index.html ${kb} KB${dev ? ' (dev)' : ''}`);
 }
 
 const options = {
